@@ -8,9 +8,9 @@ import {
     trimAndUpper, 
     getFirstElement, 
     findById 
-} from './laba_2'; 
+} from './laba_3'; 
 
-describe('TypeScript Lab 2 Tests', () => {
+describe('TypeScript Lab 3 Tests', () => {
   
   it('1. createUser should create a valid user', () => {
     const user = createUser(1, 'Ivan');

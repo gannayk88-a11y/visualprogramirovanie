@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - laba2 # Проверьте, что имя ветки в Git именно такое
+      - laba3
 
 jobs:
   test:
