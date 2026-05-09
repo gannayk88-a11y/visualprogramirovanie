@@ -6,6 +6,7 @@ on:
       - laba3
       - laba4
       - laba5
+      - laba6
 
 jobs:
   test:

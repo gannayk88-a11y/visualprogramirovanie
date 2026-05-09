@@ -20,7 +20,7 @@ import {
     GroupByOp,
     HavingOp,
     SortOp
-} from './laba_5'; 
+} from './laba_6'; 
 
 // Подменяем модуль fs/promises заглушками
 vi.mock('node:fs/promises');
@@ -40,7 +40,7 @@ const testUsers: UserData[] = [
     { id: 4, name: "Mike", surname: "Doe", age: 35, city: "LA" },
 ];
 
-describe('TypeScript Lab 5 Tests', () => {
+describe('TypeScript Lab 6 Tests', () => {
   
   // --- Тесты системы типов (Задание 5) ---
   describe('13. Type System Validation (expectTypeOf)', () => {
