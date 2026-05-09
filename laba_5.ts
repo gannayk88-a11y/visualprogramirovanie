@@ -1,6 +1,6 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 
-// --- Лабораторная 1-2 ---
+// --- Лабы 1-3 ---
 export interface User { id: number; name: string; email?: string; isActive: boolean; }
 export function createUser(id: number, name: string, email?: string, isActive: boolean = true): User { return { id, name, email, isActive }; }
 export interface Book { title: string; author: string; year?: number; genre: 'fiction' | 'non-fiction'; }
@@ -25,16 +25,12 @@ export interface HasId { id: number; }
 export function findById<T extends HasId>(items: T[], id: number): T | undefined {
     return items.find(item => item.id === id);
 }
-
-// --- Лабораторная 3 (CSV) ---
 export function csvToJSON(input: string[], delimiter: string): object[] {
     if (input.length < 2) return [];
     const headers = input[0].split(delimiter);
     return input.slice(1).map((line, rowIndex) => {
         const values = line.split(delimiter);
-        if (values.length !== headers.length) {
-            throw new Error(`Row ${rowIndex + 2} does not match header length`);
-        }
+        if (values.length !== headers.length) throw new Error(`Row ${rowIndex + 2} does not match header length`);
         const obj: any = {};
         headers.forEach((h, i) => {
             const val = values[i];
@@ -45,59 +41,54 @@ export function csvToJSON(input: string[], delimiter: string): object[] {
 }
 export async function formatCSVFileToJSONFile(input: string, output: string, delimiter: string): Promise<void> {
     const data = await readFile(input, 'utf-8');
-    const lines = data.split(/\r?\n/).filter(line => line.trim() !== '');
+    const lines = data.split(/\r?\n/).filter((line: string) => line.trim() !== '');
     const jsonResult = csvToJSON(lines, delimiter);
     await writeFile(output, JSON.stringify(jsonResult, null, 2));
 }
 
-// --- ЛАБОРАТОРНАЯ 4 (Pipeline & Generics) ---
+// --- Лаба 4-5 (Строгий порядок) ---
+export type Group<T, K extends keyof T> = { key: T[K]; items: T[]; };
 
-// 1. Типы преобразований
-export type Transform<T, R = T> = (items: T[]) => R[];
+export type WhereOp<T> = ((items: T[]) => T[]) & { _stage: 'where' };
+export type GroupByOp<T, K extends keyof T> = ((items: T[]) => Group<T, K>[]) & { _stage: 'groupBy' };
+export type HavingOp<T, K extends keyof T> = ((groups: Group<T, K>[]) => Group<T, K>[]) & { _stage: 'having' };
+export type SortOp<T> = ((items: any[]) => any[]) & { _stage: 'sort' };
 
-export type Where<T> = <K extends keyof T>(key: K, value: T[K]) => Transform<T>;
+export const where = <T, K extends keyof T>(key: K, value: T[K]): WhereOp<T> => 
+    ((data: T[]) => data.filter((item) => item[key] === value)) as WhereOp<T>;
 
-export type Sort<T> = <K extends keyof T>(key: K) => Transform<T>;
+export const sort = <T, K extends keyof T>(key: K): SortOp<T> => 
+    ((data: any[]) => [...data].sort((a, b) => (a[key] < b[key] ? -1 : a[key] > b[key] ? 1 : 0))) as SortOp<T>;
 
-export type Group<T, K extends keyof T> = {
-    key: T[K];
-    items: T[];
-};
-
-export type GroupBy<T> = <K extends keyof T>(key: K) => Transform<T, Group<T, K>>;
-
-export type GroupTransform<T, K extends keyof T> = (groups: Group<T, K>[]) => Group<T, K>[];
-
-export type Having<T> = <K extends keyof T>(
-    predicate: (group: Group<T, K>) => boolean
-) => GroupTransform<T, K>;
-
-// 2. Реализация функций конвейера
-export const where: Where<any> = (key, value) => (data) =>
-    data.filter((item) => item[key] === value);
-
-export const sort: Sort<any> = (key) => (data) =>
-    [...data].sort((a, b) => {
-        const av = a[key];
-        const bv = b[key];
-        return av < bv ? -1 : av > bv ? 1 : 0;
-    });
-
-export const groupBy: GroupBy<any> = (key) => (data) =>
-    Object.values(
+export const groupBy = <T, K extends keyof T>(key: K): GroupByOp<T, K> => 
+    ((data: T[]) => Object.values(
         data.reduce((acc, item) => {
             const k = item[key] as unknown as string;
             (acc[k] ??= { key: item[key], items: [] }).items.push(item);
             return acc;
-        }, {} as Record<string, Group<any, any>>),
-    );
+        }, {} as Record<string, Group<T, K>>),
+    )) as GroupByOp<T, K>;
 
-export const having: Having<any> = (predicate) => (groups) =>
-    groups.filter(predicate);
+export const having = <T, K extends keyof T>(predicate: (group: Group<T, K>) => boolean): HavingOp<T, K> => 
+    ((groups: Group<T, K>[]) => groups.filter(predicate)) as HavingOp<T, K>;
 
-// 3. Функция query (конвейер)
-export function query<T>(...steps: Function[]) {
-    return (data: T[]) => {
-        return steps.reduce((currentData, step) => step(currentData), data);
-    };
+// laba_5.ts
+
+// 1. Только фильтры
+export function query<T>(...args: WhereOp<T>[]): (data: T[]) => T[];
+
+// 2. Фильтры + Сортировка
+export function query<T>(arg1: WhereOp<T>, arg2: SortOp<T>): (data: T[]) => T[];
+export function query<T>(arg1: WhereOp<T>, arg2: WhereOp<T>, arg3: SortOp<T>): (data: T[]) => T[];
+
+// 3. Группировка (одна или с фильтрами ДО нее)
+export function query<T, K extends keyof T>(...args: [...WhereOp<T>[], GroupByOp<T, K>]): (data: T[]) => Group<T, K>[];
+
+// 4. После группировки: Having и Sort
+export function query<T, K extends keyof T>(arg1: GroupByOp<T, K>, ...args: (HavingOp<T, K> | SortOp<any>)[]): (data: T[]) => any[];
+export function query<T, K extends keyof T>(arg1: WhereOp<T>, arg2: GroupByOp<T, K>, ...args: (HavingOp<T, K> | SortOp<any>)[]): (data: T[]) => any[];
+
+// Сама реализация
+export function query<T>(...args: any[]) {
+    return (data: T[]) => args.reduce((acc, stage) => (stage as any)(acc), data);
 }
