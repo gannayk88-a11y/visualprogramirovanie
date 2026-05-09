@@ -1,81 +1,53 @@
-// 1. Интерфейс User и функция createUser
-export interface User {
-    id: number;
-    name: string;
-    email?: string;
-    isActive: boolean;
-}
+import { readFile, writeFile } from 'node:fs/promises';
 
-export function createUser(id: number, name: string, email?: string, isActive: boolean = true): User {
-    return { id, name, email, isActive };
-}
-
-// 2. Интерфейс Book и функция createBook
-export interface Book {
-    title: string;
-    author: string;
-    year?: number;
-    genre: 'fiction' | 'non-fiction';
-}
-
-export function createBook(book: Book): Book {
-    return book;
-}
-
-// Демонстрация: объект без поля year
-export const myBook = createBook({
-    title: "1984",
-    author: "George Orwell",
-    genre: "fiction"
-});
-
-// 3. Перегрузка функции calculateArea
+// --- Функции из предыдущих работ (User, Book и т.д. оставляем без изменений) ---
+export interface User { id: number; name: string; email?: string; isActive: boolean; }
+export function createUser(id: number, name: string, email?: string, isActive: boolean = true): User { return { id, name, email, isActive }; }
+export interface Book { title: string; author: string; year?: number; genre: 'fiction' | 'non-fiction'; }
+export function createBook(book: Book): Book { return book; }
 export function calculateArea(shape: 'circle', radius: number): number;
 export function calculateArea(shape: 'square', side: number): number;
 export function calculateArea(shape: 'circle' | 'square', value: number): number {
-    if (shape === 'circle') {
-        return Math.PI * value ** 2;
-    }
-    return value ** 2;
+    return shape === 'circle' ? Math.PI * value ** 2 : value ** 2;
 }
-
-// 4. Тип Status и функция getStatusColor
 export type Status = 'active' | 'inactive' | 'new';
-
 export function getStatusColor(status: Status): string {
-    switch (status) {
-        case 'active': return 'green';
-        case 'inactive': return 'red';
-        case 'new': return 'blue';
-        default: return 'gray'; // Добавлено для безопасности типов
-    }
+    const colors = { active: 'green', inactive: 'red', new: 'blue' };
+    return colors[status] || 'gray';
 }
-
-// 5. Тип функции StringFormatter и реализации
 export type StringFormatter = (str: string, uppercase?: boolean) => string;
-
-export const capitalize: StringFormatter = (str) => {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-};
-
+export const capitalize: StringFormatter = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 export const trimAndUpper: StringFormatter = (str, uppercase = false) => {
-    const trimmed = str.trim();
-    return uppercase ? trimmed.toUpperCase() : trimmed;
+    const t = str.trim(); return uppercase ? t.toUpperCase() : t;
 };
-
-// 6. Generic функция getFirstElement
-export function getFirstElement<T>(arr: T[]): T | undefined {
-    return arr[0];
-}
-
-export const firstNum = getFirstElement([10, 20, 30]); // number
-export const firstStr = getFirstElement(["apple", "banana"]); // string
-
-// 7. Generic с ограничением (Constraint) findById
-export interface HasId {
-    id: number;
-}
-
+export function getFirstElement<T>(arr: T[]): T | undefined { return arr[0]; }
+export interface HasId { id: number; }
 export function findById<T extends HasId>(items: T[], id: number): T | undefined {
     return items.find(item => item.id === id);
+}
+
+// --- НОВЫЕ ФУНКЦИИ (Лаба 3) ---
+
+export function csvToJSON(input: string[], delimiter: string): object[] {
+    if (input.length < 2) return [];
+    const headers = input[0].split(delimiter); // Берем ПЕРВУЮ строку массива
+    return input.slice(1).map((line, rowIndex) => {
+        const values = line.split(delimiter);
+        if (values.length !== headers.length) {
+            throw new Error(`Row ${rowIndex + 2} does not match header length`);
+        }
+        const obj: any = {};
+        headers.forEach((h, i) => {
+            const val = values[i];
+            obj[h] = isNaN(Number(val)) || val.trim() === '' ? val : Number(val);
+        });
+        return obj;
+    });
+}
+
+export async function formatCSVFileToJSONFile(input: string, output: string, delimiter: string): Promise<void> {
+    const data = await readFile(input, 'utf-8');
+    const lines = data.split(/\r?\n/).filter(line => line.trim() !== '');
+    const jsonResult = csvToJSON(lines, delimiter);
+    await writeFile(output, JSON.stringify(jsonResult, null, 2));
 }
