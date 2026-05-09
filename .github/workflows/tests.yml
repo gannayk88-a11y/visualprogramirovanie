@@ -5,6 +5,7 @@ on:
       - laba2 # Проверьте, что имя ветки в Git именно такое
       - laba3
       - laba4
+      - laba5
 
 jobs:
   test:

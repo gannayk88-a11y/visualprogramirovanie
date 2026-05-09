@@ -16,7 +16,7 @@ import {
     sort,
     groupBy,
     having
-} from './laba_4'; 
+} from './laba_5'; 
 
 // Подменяем модуль fs/promises заглушками
 vi.mock('node:fs/promises');
@@ -37,7 +37,7 @@ const testUsers: UserData[] = [
     { id: 4, name: "Mike", surname: "Doe", age: 35, city: "LA" },
 ];
 
-describe('TypeScript Lab 4 Tests', () => {
+describe('TypeScript Lab 5 Tests', () => {
   
   // --- Тесты из Лабораторной №2 ---
   it('1. createUser should create a valid user', () => {
