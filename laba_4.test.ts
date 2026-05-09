@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fsPromises from 'node:fs/promises';
-import { createUser, createBook, calculateArea, getStatusColor, capitalize, trimAndUpper, getFirstElement, findById, csvToJSON, formatCSVFileToJSONFile } from './laba_3'; 
+import { createUser, createBook, calculateArea, getStatusColor, capitalize, trimAndUpper, getFirstElement, findById, csvToJSON, formatCSVFileToJSONFile } from './laba_4'; 
 
 // Подменяем модуль fs/promises заглушками
 vi.mock('node:fs/promises');
 
-describe('TypeScript Lab 3 Tests', () => {
+describe('TypeScript Lab 4 Tests', () => {
   
   // --- Тесты из Лабораторной №2 ---
 
