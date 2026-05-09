@@ -16,7 +16,8 @@ export function getStatusColor(status: Status): string {
     return colors[status] || 'gray';
 }
 export type StringFormatter = (str: string, uppercase?: boolean) => string;
-export const capitalize: StringFormatter = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+// Переименовали, чтобы не мешать встроенному Capitalize в Лабе 6
+export const capitalizeString: StringFormatter = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 export const trimAndUpper: StringFormatter = (str, uppercase = false) => {
     const t = str.trim(); return uppercase ? t.toUpperCase() : t;
 };
@@ -72,23 +73,32 @@ export const groupBy = <T, K extends keyof T>(key: K): GroupByOp<T, K> =>
 export const having = <T, K extends keyof T>(predicate: (group: Group<T, K>) => boolean): HavingOp<T, K> => 
     ((groups: Group<T, K>[]) => groups.filter(predicate)) as HavingOp<T, K>;
 
-// laba_5.ts
-
-// 1. Только фильтры
 export function query<T>(...args: WhereOp<T>[]): (data: T[]) => T[];
-
-// 2. Фильтры + Сортировка
 export function query<T>(arg1: WhereOp<T>, arg2: SortOp<T>): (data: T[]) => T[];
 export function query<T>(arg1: WhereOp<T>, arg2: WhereOp<T>, arg3: SortOp<T>): (data: T[]) => T[];
-
-// 3. Группировка (одна или с фильтрами ДО нее)
 export function query<T, K extends keyof T>(...args: [...WhereOp<T>[], GroupByOp<T, K>]): (data: T[]) => Group<T, K>[];
-
-// 4. После группировки: Having и Sort
 export function query<T, K extends keyof T>(arg1: GroupByOp<T, K>, ...args: (HavingOp<T, K> | SortOp<any>)[]): (data: T[]) => any[];
 export function query<T, K extends keyof T>(arg1: WhereOp<T>, arg2: GroupByOp<T, K>, ...args: (HavingOp<T, K> | SortOp<any>)[]): (data: T[]) => any[];
-
-// Сама реализация
 export function query<T>(...args: any[]) {
     return (data: T[]) => args.reduce((acc, stage) => (stage as any)(acc), data);
 }
+
+// --- Лаба 6 (Meta-programming и Mapped Types) ---
+
+// 1. DeepReadonly<T>
+// Рекурсивно делает все свойства объекта и вложенных объектов только для чтения
+export type DeepReadonly<T> = {
+    readonly [K in keyof T]: T[K] extends object ? DeepReadonly<T[K]> : T[K];
+};
+
+// 2. PickedByType<T, U>
+// Выбирает из T только те свойства, значения которых соответствуют типу U
+export type PickedByType<T, U> = {
+    [K in keyof T as T[K] extends U ? K : never]: T[K];
+};
+
+// 3. EventHandlers<T>
+// Генерирует имена обработчиков (напр. 'click' -> 'onClick')
+export type EventHandlers<T> = {
+    [K in keyof T as K extends string ? `on${Capitalize<K>}` : never]: (event: T[K]) => void;
+};

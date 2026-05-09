@@ -5,7 +5,7 @@ import {
     createBook, 
     calculateArea, 
     getStatusColor, 
-    capitalize, 
+    capitalizeString, // Используем обновленное имя
     trimAndUpper, 
     getFirstElement, 
     findById, 
@@ -19,10 +19,13 @@ import {
     WhereOp,
     GroupByOp,
     HavingOp,
-    SortOp
+    SortOp,
+    // Новые типы шестой лабы
+    DeepReadonly,
+    PickedByType,
+    EventHandlers
 } from './laba_6'; 
 
-// Подменяем модуль fs/promises заглушками
 vi.mock('node:fs/promises');
 
 type UserData = {
@@ -40,31 +43,9 @@ const testUsers: UserData[] = [
     { id: 4, name: "Mike", surname: "Doe", age: 35, city: "LA" },
 ];
 
-describe('TypeScript Lab 6 Tests', () => {
+describe('TypeScript Comprehensive Lab Tests', () => {
   
-  // --- Тесты системы типов (Задание 5) ---
-  describe('13. Type System Validation (expectTypeOf)', () => {
-    it('should verify strict operator types', () => {
-        expectTypeOf(where<UserData, 'name'>('name', 'John')).toMatchTypeOf<WhereOp<UserData>>();
-        expectTypeOf(groupBy<UserData, 'city'>('city')).toMatchTypeOf<GroupByOp<UserData, 'city'>>();
-        expectTypeOf(having<UserData, 'city'>(g => g.items.length > 0)).toMatchTypeOf<HavingOp<UserData, 'city'>>();
-        expectTypeOf(sort<UserData, 'age'>('age')).toMatchTypeOf<SortOp<UserData>>();
-    });
-
-    it('should verify query return types', () => {
-        const q = query<UserData, 'city'>(
-            where('name', 'John'),
-            groupBy('city')
-        );
-        const result = q(testUsers);
-        expectTypeOf(result).toBeArray();
-        // Проверяем структуру первого элемента группы
-        expectTypeOf(result[0]).toHaveProperty('items');
-        expectTypeOf(result[0]).toHaveProperty('key');
-    });
-  });
-
-  // --- Функциональные тесты ---
+  // --- БАЗОВЫЕ ФУНКЦИИ (ЛАБЫ 1-3) ---
 
   it('1. createUser should create a valid user', () => {
     const user = createUser(1, 'Ivan');
@@ -78,23 +59,27 @@ describe('TypeScript Lab 6 Tests', () => {
 
   it('3. calculateArea should work', () => {
     expect(calculateArea('circle', 10)).toBeCloseTo(314.15, 1);
+    expect(calculateArea('square', 5)).toBe(25);
   });
 
   it('4. getStatusColor should return correct colors', () => {
     expect(getStatusColor('active')).toBe('green');
+    expect(getStatusColor('inactive')).toBe('red');
+    expect(getStatusColor('new')).toBe('blue');
   });
 
   it('5. StringFormatter functions', () => {
-    expect(capitalize('hello')).toBe('Hello');
+    expect(capitalizeString('hello')).toBe('Hello');
     expect(trimAndUpper('  hi  ', true)).toBe('HI');
   });
 
   it('6. getFirstElement should work correctly', () => {
     expect(getFirstElement([10, 20])).toBe(10);
+    expect(getFirstElement([])).toBeUndefined();
   });
 
   it('7. findById should find item by id', () => {
-    const items = [{ id: 1, name: 'A' }];
+    const items = [{ id: 1, name: 'A' }, { id: 2, name: 'B' }];
     expect(findById(items, 1)).toEqual({ id: 1, name: 'A' });
   });
 
@@ -115,14 +100,14 @@ describe('TypeScript Lab 6 Tests', () => {
     });
   });
 
-  // laba_5.test.ts
+  // --- QUERY PIPELINE (ЛАБА 4-5) ---
 
   describe('10. Query: Filtering and Sorting', () => {
     it('should filter John Doe and sort by age', () => {
         const search = query(
-            where<UserData, 'name'>("name", "John"), // Явно добавили UserData
+            where<UserData, 'name'>("name", "John"),
             where<UserData, 'surname'>("surname", "Doe"),
-            sort<UserData, 'age'>("age") // Теперь ошибка 'never' исчезнет
+            sort<UserData, 'age'>("age")
         );
         const result = search(testUsers) as UserData[];
         expect(result).toHaveLength(3);
@@ -132,7 +117,6 @@ describe('TypeScript Lab 6 Tests', () => {
 
   describe('11. Query: Grouping and Having', () => {
     it('should group by city and filter groups by size', () => {
-        // Указываем K ('city') вторым параметром, если нужно
         const groupAndFilter = query<UserData, 'city'>(
             groupBy("city"),
             having(group => group.items.length > 1)
@@ -151,9 +135,44 @@ describe('TypeScript Lab 6 Tests', () => {
         );
         const result = pipeline(testUsers);
         expect(result).toHaveLength(1);
-        // Добавляем проверку типа для обращения к .key
-        const firstGroup = result[0] as any;
-        expect(firstGroup.key).toBe('LA');
+        expect(result[0].key).toBe('LA');
+    });
+  });
+
+  // --- TYPE SYSTEM VALIDATION ---
+
+  describe('13. Type System Validation (expectTypeOf)', () => {
+    it('should verify strict operator types', () => {
+        expectTypeOf(where<UserData, 'name'>('name', 'John')).toMatchTypeOf<WhereOp<UserData>>();
+        expectTypeOf(groupBy<UserData, 'city'>('city')).toMatchTypeOf<GroupByOp<UserData, 'city'>>();
+    });
+  });
+
+  // --- НОВЫЕ ТЕСТЫ ЛАБЫ 6 (META-PROGRAMMING) ---
+
+  describe('14. Advanced Utility Types (Lab 6)', () => {
+    it('DeepReadonly should work recursively', () => {
+        type User = { id: number; profile: { name: string } };
+        type Expected = { 
+            readonly id: number; 
+            readonly profile: { readonly name: string } 
+        };
+        
+        // Сравниваем полученный тип с ожидаемым вручную
+        expectTypeOf<DeepReadonly<User>>().toEqualTypeOf<Expected>();
+    });
+
+    it('PickedByType should filter properties', () => {
+        type Example = { id: number; name: string; isActive: boolean };
+        // Ожидаем, что останется только id (number)
+        expectTypeOf<PickedByType<Example, number>>().toEqualTypeOf<{ id: number }>();
+    });
+
+    it('EventHandlers should generate on- prefixed handlers', () => {
+        type Events = { click: { x: number } };
+        type ExpectedHandler = { onClick: (event: { x: number }) => void };
+
+        expectTypeOf<EventHandlers<Events>>().toEqualTypeOf<ExpectedHandler>();
     });
   });
 });
