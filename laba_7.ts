@@ -1,31 +1,40 @@
+// laba_7.ts
 import { readFile, writeFile } from 'fs/promises';
 
 // --- Лабы 1-3 ---
 export interface User { id: number; name: string; email?: string; isActive: boolean; }
-export function createUser(id: number, name: string, email?: string, isActive: boolean = true): User { return { id, name, email, isActive }; }
+export function createUser(id: number, name: string, email?: string, isActive: boolean = true): User { 
+    return { id, name, email, isActive }; 
+}
+
 export interface Book { title: string; author: string; year?: number; genre: 'fiction' | 'non-fiction'; }
 export function createBook(book: Book): Book { return book; }
+
 export function calculateArea(shape: 'circle', radius: number): number;
 export function calculateArea(shape: 'square', side: number): number;
 export function calculateArea(shape: 'circle' | 'square', value: number): number {
     return shape === 'circle' ? Math.PI * value ** 2 : value ** 2;
 }
+
 export type Status = 'active' | 'inactive' | 'new';
 export function getStatusColor(status: Status): string {
     const colors: Record<string, string> = { active: 'green', inactive: 'red', new: 'blue' };
     return colors[status] || 'gray';
 }
+
 export type StringFormatter = (str: string, uppercase?: boolean) => string;
-// Переименовали, чтобы не мешать встроенному Capitalize в Лабе 6
 export const capitalizeString: StringFormatter = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 export const trimAndUpper: StringFormatter = (str, uppercase = false) => {
-    const t = str.trim(); return uppercase ? t.toUpperCase() : t;
+    const t = str.trim(); 
+    return uppercase ? t.toUpperCase() : t;
 };
+
 export function getFirstElement<T>(arr: T[]): T | undefined { return arr[0]; }
 export interface HasId { id: number; }
 export function findById<T extends HasId>(items: T[], id: number): T | undefined {
     return items.find(item => item.id === id);
 }
+
 export function csvToJSON(input: string[], delimiter: string): object[] {
     if (input.length < 2) return [];
     const headers = input[0].split(delimiter);
@@ -40,6 +49,7 @@ export function csvToJSON(input: string[], delimiter: string): object[] {
         return obj;
     });
 }
+
 export async function formatCSVFileToJSONFile(input: string, output: string, delimiter: string): Promise<void> {
     const data = await readFile(input, 'utf-8');
     const lines = data.split(/\r?\n/).filter((line: string) => line.trim() !== '');
@@ -47,9 +57,8 @@ export async function formatCSVFileToJSONFile(input: string, output: string, del
     await writeFile(output, JSON.stringify(jsonResult, null, 2));
 }
 
-// --- Лаба 4-5 (Строгий порядок) ---
+// --- Лабы 4-5 ---
 export type Group<T, K extends keyof T> = { key: T[K]; items: T[]; };
-
 export type WhereOp<T> = ((items: T[]) => T[]) & { _stage: 'where' };
 export type GroupByOp<T, K extends keyof T> = ((items: T[]) => Group<T, K>[]) & { _stage: 'groupBy' };
 export type HavingOp<T, K extends keyof T> = ((groups: Group<T, K>[]) => Group<T, K>[]) & { _stage: 'having' };
@@ -83,22 +92,42 @@ export function query<T>(...args: any[]) {
     return (data: T[]) => args.reduce((acc, stage) => (stage as any)(acc), data);
 }
 
-// --- Лаба 6 (Meta-programming и Mapped Types) ---
-
-// 1. DeepReadonly<T>
-// Рекурсивно делает все свойства объекта и вложенных объектов только для чтения
+// --- Лаба 6 ---
 export type DeepReadonly<T> = {
     readonly [K in keyof T]: T[K] extends object ? DeepReadonly<T[K]> : T[K];
 };
-
-// 2. PickedByType<T, U>
-// Выбирает из T только те свойства, значения которых соответствуют типу U
 export type PickedByType<T, U> = {
     [K in keyof T as T[K] extends U ? K : never]: T[K];
 };
-
-// 3. EventHandlers<T>
-// Генерирует имена обработчиков (напр. 'click' -> 'onClick')
 export type EventHandlers<T> = {
     [K in keyof T as K extends string ? `on${Capitalize<K>}` : never]: (event: T[K]) => void;
 };
+
+// --- Лаба 7 (React & API) ---
+export interface APIBook {
+    id: number;
+    title: string;
+    isbn: string;
+    pageCount: number;
+    authors: string[];
+    imageBlob?: Blob | null; 
+}
+
+/**
+ * Получает изображение обложки книги по ISBN через Google Books API
+ */
+export async function getBookCoverBlob(isbn: string): Promise<Blob | null> {
+    try {
+        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+        const data = await response.json();
+        const thumbnailUrl = data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
+
+        if (thumbnailUrl) {
+            const imgRes = await fetch(thumbnailUrl.replace(/^http:/, 'https:'));
+            return await imgRes.blob();
+        }
+    } catch (error) {
+        console.error("Ошибка при получении Blob обложки:", error);
+    }
+    return null;
+}

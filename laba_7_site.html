@@ -2,12 +2,102 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="icon.ico" type="image/x-icon">
-    <title>лаба 7</title>
+    <title>Лабораторная 7: Книжная полка</title>
+
+    <!-- React и ReactDOM через CDN (UMD) -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <style>
+        body { font-family: sans-serif; background: #f4f4f4; padding: 20px; }
+        .book-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        .book-card {
+            background: #fff; width: 200px; padding: 15px; border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center;
+        }
+        .book-cover { width: 150px; height: 220px; object-fit: cover; background: #eee; }
+        .book-title { font-size: 18px; font-weight: bold; margin: 10px 0 5px; text-align: center; }
+        .book-authors { font-size: 14px; color: #666; text-align: center; }
+        .loading { text-align: center; font-size: 24px; margin-top: 50px; }
+    </style>
 </head>
 <body>
+    <div id="root"></div>
 
-    <!-- Подключаем внешний файл -->
-    <script src="laba_7.js"></script>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Компонент карточки книги
+        const BookCard = ({ title, authors, imageBlob }) => {
+            const [url, setUrl] = useState('');
+
+            useEffect(() => {
+                if (imageBlob) {
+                    const objectUrl = URL.createObjectURL(imageBlob);
+                    setUrl(objectUrl);
+                    return () => URL.revokeObjectURL(objectUrl);
+                }
+            }, [imageBlob]);
+
+            return (
+                <div className="book-card">
+                    <img className="book-cover" src={url || 'https://via.placeholder.com/150x220'} alt={title} />
+                    <div className="book-title">{title}</div>
+                    <div className="book-authors">{authors.join(', ')}</div>
+                </div>
+            );
+        };
+
+        // Главный компонент приложения
+        const App = () => {
+            const [books, setBooks] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const loadData = async () => {
+                    try {
+                        // Получаем книги с fake API
+                        const res = await fetch('https://fakeapi.extendsclass.com/books');
+                        const data = await res.json();
+
+                        // Получаем миниатюры через Google Books API
+                        const fullData = await Promise.all(
+                            data.map(async (book) => {
+                                const gRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${book.isbn}`);
+                                const gData = await gRes.json();
+                                const thumb = gData.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
+
+                                let blob = null;
+                                if (thumb) {
+                                    const imgRes = await fetch(thumb.replace(/^http:/, 'https:'));
+                                    blob = await imgRes.blob();
+                                }
+
+                                return { ...book, imageBlob: blob };
+                            })
+                        );
+
+                        setBooks(fullData);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                    setLoading(false);
+                };
+
+                loadData();
+            }, []);
+
+            if (loading) return <div className="loading">Загрузка книг (Blobs)...</div>;
+
+            return (
+                <div className="book-container">
+                    {books.map(b => <BookCard key={b.id} {...b} />)}
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
 </body>
 </html>
