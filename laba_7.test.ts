@@ -24,7 +24,7 @@ import {
     DeepReadonly,
     PickedByType,
     EventHandlers
-} from './laba_6'; 
+} from './laba_7'; 
 
 vi.mock('node:fs/promises');
 
